@@ -15,7 +15,6 @@
 
 import gc
 import re
-from functools import lru_cache
 from typing import List, Optional, Union
 
 import torch
@@ -101,9 +100,9 @@ def should_quantize_layer(
         bool: Whether this layer should be quantized.
 
     Note:
-        String patterns are automatically detected as regex if they include special chars:
-        - If contains any . * + ? ^ $ { } [ ] | ( ) \\ it's treated as regex,
-        - Otherwise, it's escaped and matched literally.
+        String patterns are auto-detected as regex if they include special chars:
+        - If contains any . * + ? ^ $ { } [ ] | ( ) \\ -> treated as regex
+        - Otherwise, escaped and matched literally
     """
     if include_patterns is None:
         include_patterns = []
@@ -158,8 +157,10 @@ def _ensure_deep_gemm():
         return _deep_gemm_cached
     except ImportError as e:
         raise ImportError(
-            "deep_gemm is required for 'fp8-per-block' quantization with native_fp8_support, "
-            "but was not found. Please install deep_gemm first."
+            (
+                "deep_gemm is required for 'fp8-per-block' quantization with "
+                "native_fp8_support, but was not found. Please install deep_gemm first."
+            )
         ) from e
 
 

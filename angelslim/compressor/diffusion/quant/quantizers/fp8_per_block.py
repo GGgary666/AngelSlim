@@ -27,7 +27,8 @@ FP8_MIN = float(torch.finfo(torch.float8_e4m3fn).min)
 def per_block_quant_torch(
     x: torch.Tensor, block_size: int = 128
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Pure Torch implementation of block-wise FP8 (e4m3fn) quantization.
+    """
+    Pure Torch implementation of block-wise FP8 (e4m3fn) quantization.
 
     Args:
         x (torch.Tensor): 2D tensor (M, N) in float types.
@@ -35,8 +36,10 @@ def per_block_quant_torch(
 
     Returns:
         Tuple[torch.Tensor, torch.Tensor]:
-            - y: quantized tensor with dtype=torch.float8_e4m3fn and same shape/device as x
-            - s: per-block scale tensor with shape (ceil(M/bs), ceil(N/bs)) on x.device
+            - y: quantized tensor with dtype=torch.float8_e4m3fn and same
+              shape/device as x
+            - s: per-block scale tensor with shape (ceil(M/bs), ceil(N/bs)) on
+              x.device
     """
     assert x.is_contiguous()
     assert x.dim() == 2
@@ -105,14 +108,14 @@ def per_block_quant_triton(
     x: torch.Tensor, block_size: int = 128
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
-    Quantizes a FP32 2D tensor to FP8 format (E4M3FN) using block-wise quantization.
-    For each block of size block_size x block_size:
-        - Computes the scaling factor as the maximum absolute value of the block divided by 448.0 (the largest magnitude representable in FP8 E4M3FN).
-        - Prevents division by zero by setting the scale to 1.0 if the block is all zeros.
-        - Scales and clamps the values, then casts to FP8 format.
+    Quantizes a FP32 2D tensor to FP8 (E4M3FN) using block-wise quantization.
+    For each (block_size x block_size) block:
+        - scale = max(abs(block)) / 448.0 (FP8 E4M3FN max magnitude)
+        - if block is all zeros, use scale = 1.0 to avoid div-by-zero
+        - scale, clamp and cast to FP8
     Returns:
-        y: Quantized tensor in FP8 format, same shape as input.
-        s: Per-block scaling factors as a 2D tensor of shape (num_blocks_M, num_blocks_N).
+        y: Quantized FP8 tensor, same shape as input
+        s: Per-block scales, shape (num_blocks_M, num_blocks_N)
     """
     assert x.is_contiguous()
     assert x.dim() == 2
@@ -123,10 +126,11 @@ def per_block_quant_triton(
     n_blocks = triton.cdiv(N, block_size)
     s = torch.empty((m_blocks, n_blocks), dtype=torch.float32, device=x.device)
 
-    grid = lambda meta: (
-        triton.cdiv(M, meta["BLOCK_SIZE"]),
-        triton.cdiv(N, meta["BLOCK_SIZE"]),
-    )
+    def grid(meta):
+        return (
+            triton.cdiv(M, meta["BLOCK_SIZE"]),
+            triton.cdiv(N, meta["BLOCK_SIZE"]),
+        )
 
     per_block_quant_kernel[grid](x, y, s, M, N, BLOCK_SIZE=block_size)
 

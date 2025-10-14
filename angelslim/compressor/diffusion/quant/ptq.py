@@ -20,8 +20,18 @@ import torch
 import tqdm
 
 from .modules import FP8DynamicLinear
-from .quantizers import *
-from .utils import *
+from .quantizers import (
+    fp8_per_block_quant,
+    fp8_per_tensor_quant,
+    fp8_per_token_group_quant,
+)
+from .utils import (
+    _ensure_deep_gemm,
+    cleanup_memory,
+    create_default_layer_filter,
+    replace_module,
+    should_quantize_layer,
+)
 
 __all__ = ["quantize_model_to_fp8"]
 
@@ -38,8 +48,10 @@ def quantize_model_to_fp8(
 
     Args:
         model: The PyTorch model to be quantized.
-        quant_type: Quantization type, one of "fp8-per-tensor", "fp8-per-token", "fp8-per-block".
-        layer_filter: A callable filter that decides whether a layer should be quantized.
+        quant_type: Quantization type, one of
+            "fp8-per-tensor", "fp8-per-token", "fp8-per-block".
+        layer_filter: A callable filter for deciding whether a
+            layer should be quantized.
         include_patterns: List of patterns (string or regex) to include.
         exclude_patterns: List of patterns (string or regex) to exclude.
 
@@ -52,7 +64,7 @@ def quantize_model_to_fp8(
             model,
             "fp8-per-tensor",
             include_patterns=["linear", "attention"],
-            exclude_patterns=["embed", "norm"]
+            exclude_patterns=["embed", "norm"],
         )
 
         # Regex patterns (auto-detected)
@@ -90,9 +102,11 @@ def quantize_model_to_fp8(
     # Set layer filter
     if layer_filter is None:
         if include_patterns is not None or exclude_patterns is not None:
-            layer_filter = lambda name: should_quantize_layer(
-                name, include_patterns, exclude_patterns
-            )
+
+            def _layer_filter(name: str) -> bool:
+                return should_quantize_layer(name, include_patterns, exclude_patterns)
+
+            layer_filter = _layer_filter
         else:
             layer_filter = create_default_layer_filter()
 

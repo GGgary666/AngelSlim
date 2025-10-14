@@ -21,7 +21,9 @@ import triton.language as tl
 
 
 # quant function for per-group fp8 activation
-# https://github.com/sgl-project/sglang/blob/a167fd0bcb9ef4b0f4331a109e40c8cdc770b026/python/sglang/srt/layers/quantization/fp8_kernel.py#L116
+# https://github.com/sgl-project/sglang/
+# blob/a167fd0bcb9ef4b0f4331a109e40c8cdc770b026/python/sglang/srt/layers/
+# quantization/fp8_kernel.py#L116
 @triton.jit
 def _per_token_group_quant_fp8(
     y_ptr,
@@ -34,7 +36,7 @@ def _per_token_group_quant_fp8(
     fp8_max,
     BLOCK: tl.constexpr,
 ):
-    """A Triton-accelerated function to perform per-token-group quantization on a tensor."""
+    """A Triton-accelerated function for per-token-group quantization."""
     g_id = tl.program_id(0)
     y_ptr += g_id * y_stride
     y_q_ptr += g_id * y_stride
@@ -66,7 +68,7 @@ def _per_token_group_quant_fp8_colmajor(
     fp8_max,
     BLOCK: tl.constexpr,
 ):
-    """A Triton-accelerated function to perform per-token-group quantization on a tensor."""
+    """A Triton-accelerated function for per-token-group quantization."""
     g_id = tl.program_id(0)
     y_ptr += g_id * group_size
     y_q_ptr += g_id * group_size

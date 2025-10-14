@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
-
 import torch
 import triton
 import triton.language as tl
 
-from ..quantizers import *
+from ..quantizers import (
+    fp8_per_block_quant,
+    fp8_per_tensor_quant,
+    fp8_per_token_group_quant,
+)
 from ..utils import _ensure_deep_gemm
 
 # modified from https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/kernel.py
@@ -101,10 +103,13 @@ def fp8_gemm_triton_block(
     M = a.numel() // K
     N = b.size(0)
     c = a.new_empty(*a.size()[:-1], N, dtype=out_dtype)
-    grid = lambda META: (
-        triton.cdiv(M, META["BLOCK_SIZE_M"]),
-        triton.cdiv(N, META["BLOCK_SIZE_N"]),
-    )
+
+    def grid(meta):
+        return (
+            triton.cdiv(M, meta["BLOCK_SIZE_M"]),
+            triton.cdiv(N, meta["BLOCK_SIZE_N"]),
+        )
+
     _fp8_gemm_triton_block_kernel[grid](a, b, c, a_s, b_s, M, N, K)
 
     if bias is not None:
