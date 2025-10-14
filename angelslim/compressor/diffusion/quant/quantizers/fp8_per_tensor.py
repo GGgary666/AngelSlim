@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import torch
 from typing import Tuple
 
-FP8_MAX  = float(torch.finfo(torch.float8_e4m3fn).max)
-FP8_MIN  = float(torch.finfo(torch.float8_e4m3fn).min)
+import torch
+
+FP8_MAX = float(torch.finfo(torch.float8_e4m3fn).max)
+FP8_MIN = float(torch.finfo(torch.float8_e4m3fn).min)
+
 
 # quant function for per-tensor fp8
 # modified from https://github.com/neuralmagic/AutoFP8/blob/main/auto_fp8/quantize.py
@@ -43,10 +45,9 @@ def fp8_per_tensor_quant(x: torch.Tensor) -> Tuple[torch.Tensor, float]:
 if __name__ == "__main__":
     # Test both implementations
     x = torch.randn(1024, 1024).cuda()
-    
+
     # Test PyTorch implementation
     qx_torch, scale_torch = fp8_per_tensor_quant(x)
     print("PyTorch implementation:")
     print(f"Quantized tensor shape: {qx_torch.shape}, dtype: {qx_torch.dtype}")
     print(f"Scale: {scale_torch}")
-   

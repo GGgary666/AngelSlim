@@ -12,25 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import torch
-import tqdm
 import copy
 import re
-from typing import List, Union, Optional
+from typing import List, Optional, Union
+
+import torch
+import tqdm
 
 from .modules import FP8DynamicLinear
-from .utils import *
 from .quantizers import *
+from .utils import *
 
 __all__ = ["quantize_model_to_fp8"]
 
 
 def quantize_model_to_fp8(
-    model: torch.nn.Module, 
+    model: torch.nn.Module,
     quant_type: str = "fp8-per-tensor",
     layer_filter: Optional[callable] = None,
     include_patterns: Optional[List[Union[str, re.Pattern]]] = None,
-    exclude_patterns: Optional[List[Union[str, re.Pattern]]] = None
+    exclude_patterns: Optional[List[Union[str, re.Pattern]]] = None,
 ):
     """
     Quantize a PyTorch model to FP8 formats.
@@ -74,21 +75,27 @@ def quantize_model_to_fp8(
         custom_filter = lambda name: "attention" in name and "norm" not in name
         quantize_model_to_fp8(model, "fp8-per-tensor", layer_filter=custom_filter)
     """
-    assert quant_type in ["fp8-per-tensor", "fp8-per-token", "fp8-per-block"], f"Invalid quant_type: {quant_type}"
+    assert quant_type in [
+        "fp8-per-tensor",
+        "fp8-per-token",
+        "fp8-per-block",
+    ], f"Invalid quant_type: {quant_type}"
     # if quant_type == "fp8-per-token":
-        # from abo_kernel_lib import abo_fp8_cutlass_scaled_mm
+    # from abo_kernel_lib import abo_fp8_cutlass_scaled_mm
 
     native_fp8_support = (
         torch.cuda.is_available() and torch.cuda.get_device_capability() >= (9, 0)
     )
-    
+
     # Set layer filter
     if layer_filter is None:
         if include_patterns is not None or exclude_patterns is not None:
-            layer_filter = lambda name: should_quantize_layer(name, include_patterns, exclude_patterns)
+            layer_filter = lambda name: should_quantize_layer(
+                name, include_patterns, exclude_patterns
+            )
         else:
             layer_filter = create_default_layer_filter()
-    
+
     # Convert model to bfloat16
     model.to(torch.bfloat16)
 
@@ -101,23 +108,27 @@ def quantize_model_to_fp8(
                 if quant_type == "fp8-per-tensor":
                     quant_weight, weight_scale = fp8_per_tensor_quant(linear.weight)
                 elif quant_type == "fp8-per-token":
-                    quant_weight, weight_scale = fp8_per_token_group_quant(linear.weight, linear.weight.shape[-1])
+                    quant_weight, weight_scale = fp8_per_token_group_quant(
+                        linear.weight, linear.weight.shape[-1]
+                    )
                     weight_scale = weight_scale.t()
                 elif quant_type == "fp8-per-block":
                     if native_fp8_support:
-                        _ = _ensure_deep_gemm()  # checked import; error if not available
+                        _ = (
+                            _ensure_deep_gemm()
+                        )  # checked import; error if not available
                     quant_weight, weight_scale = fp8_per_block_quant(linear.weight)
                 else:
                     raise ValueError(f"Invalid quant_type: {quant_type}")
 
                 bias = copy.deepcopy(linear.bias) if linear.bias is not None else None
-                
+
                 quant_linear = FP8DynamicLinear(
                     weight=quant_weight,
                     weight_scale=weight_scale,
                     bias=bias,
                     native_fp8_support=native_fp8_support,
-                    quant_type=quant_type
+                    quant_type=quant_type,
                 )
 
                 replace_module(model, name, quant_linear)

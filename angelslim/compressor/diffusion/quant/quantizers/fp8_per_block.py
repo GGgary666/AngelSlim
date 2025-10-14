@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import torch
 from typing import Tuple
+
+import torch
 import triton
 import triton.language as tl
 
-FP8_MAX  = float(torch.finfo(torch.float8_e4m3fn).max)
-FP8_MIN  = float(torch.finfo(torch.float8_e4m3fn).min)
+FP8_MAX = float(torch.finfo(torch.float8_e4m3fn).max)
+FP8_MIN = float(torch.finfo(torch.float8_e4m3fn).min)
+
 
 # torch implementation
 # for weight quantization on cpu
-def per_block_quant_torch(x: torch.Tensor, block_size: int = 128) -> Tuple[torch.Tensor, torch.Tensor]:
+def per_block_quant_torch(
+    x: torch.Tensor, block_size: int = 128
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """Pure Torch implementation of block-wise FP8 (e4m3fn) quantization.
 
     Args:
@@ -70,16 +74,10 @@ def per_block_quant_torch(x: torch.Tensor, block_size: int = 128) -> Tuple[torch
 
     return y, s
 
+
 # https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/kernel.py
 @triton.jit
-def per_block_quant_kernel(
-        x_ptr,
-        y_ptr,
-        s_ptr,
-        M,
-        N,
-        BLOCK_SIZE: tl.constexpr
-):
+def per_block_quant_kernel(x_ptr, y_ptr, s_ptr, M, N, BLOCK_SIZE: tl.constexpr):
     """Quantizes FP32 tensor to FP8 format using block-wise quantization."""
     pid_m = tl.program_id(axis=0)
     pid_n = tl.program_id(axis=1)
@@ -100,9 +98,12 @@ def per_block_quant_kernel(
     tl.store(y_ptr + offs, y, mask=mask)
     tl.store(s_ptr + pid_m * n + pid_n, scale)
 
+
 # triton implementation
 # for weight quantization on gpu
-def per_block_quant_triton(x: torch.Tensor, block_size: int = 128) -> Tuple[torch.Tensor, torch.Tensor]:
+def per_block_quant_triton(
+    x: torch.Tensor, block_size: int = 128
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Quantizes a FP32 2D tensor to FP8 format (E4M3FN) using block-wise quantization.
     For each block of size block_size x block_size:
@@ -123,39 +124,49 @@ def per_block_quant_triton(x: torch.Tensor, block_size: int = 128) -> Tuple[torc
     s = torch.empty((m_blocks, n_blocks), dtype=torch.float32, device=x.device)
 
     grid = lambda meta: (
-        triton.cdiv(M, meta['BLOCK_SIZE']),
-        triton.cdiv(N, meta['BLOCK_SIZE'])
+        triton.cdiv(M, meta["BLOCK_SIZE"]),
+        triton.cdiv(N, meta["BLOCK_SIZE"]),
     )
 
     per_block_quant_kernel[grid](x, y, s, M, N, BLOCK_SIZE=block_size)
 
     return y, s
 
-def fp8_per_block_quant(x: torch.Tensor, block_size: int = 128) -> Tuple[torch.Tensor, torch.Tensor]:
+
+def fp8_per_block_quant(
+    x: torch.Tensor, block_size: int = 128
+) -> Tuple[torch.Tensor, torch.Tensor]:
     if x.is_cuda:
         return per_block_quant_triton(x, block_size)
     else:
         return per_block_quant_torch(x, block_size)
-    
+
 
 if __name__ == "__main__":
-    
+
     x = torch.randn(1024, 1024).cuda()
-    import pdb; pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()
     qx, scale = per_block_quant_triton(x)
     qx1, scale1 = per_block_quant_torch(x)
-    assert torch.allclose(qx.to(torch.float32), qx1.to(torch.float32)), "qx and qx1 are not close"
-    assert torch.allclose(scale.to(torch.float32), scale1.to(torch.float32)), "scale and scale1 are not close"
+    assert torch.allclose(
+        qx.to(torch.float32), qx1.to(torch.float32)
+    ), "qx and qx1 are not close"
+    assert torch.allclose(
+        scale.to(torch.float32), scale1.to(torch.float32)
+    ), "scale and scale1 are not close"
     print("qx and qx1 are close")
     print("scale and scale1 are close")
     print("qx shape: ", qx.shape)
     print("qx1 shape: ", qx1.shape)
     print("scale shape: ", scale.shape)
     print("scale1 shape: ", scale1.shape)
-    
+
     x = torch.randn(1024, 1024).cpu()
-    import pdb; pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()
     qx, scale = per_block_quant_torch(x)
     print("qx shape: ", qx.shape)
     print("scale shape: ", scale.shape)
-    

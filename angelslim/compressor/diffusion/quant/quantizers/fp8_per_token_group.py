@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
-import torch
 from typing import Tuple
+
+import torch
 import triton
 import triton.language as tl
 
@@ -23,15 +24,15 @@ import triton.language as tl
 # https://github.com/sgl-project/sglang/blob/a167fd0bcb9ef4b0f4331a109e40c8cdc770b026/python/sglang/srt/layers/quantization/fp8_kernel.py#L116
 @triton.jit
 def _per_token_group_quant_fp8(
-        y_ptr,
-        y_q_ptr,
-        y_s_ptr,
-        y_stride,
-        N,
-        eps,
-        fp8_min,
-        fp8_max,
-        BLOCK: tl.constexpr,
+    y_ptr,
+    y_q_ptr,
+    y_s_ptr,
+    y_stride,
+    N,
+    eps,
+    fp8_min,
+    fp8_max,
+    BLOCK: tl.constexpr,
 ):
     """A Triton-accelerated function to perform per-token-group quantization on a tensor."""
     g_id = tl.program_id(0)
@@ -54,16 +55,16 @@ def _per_token_group_quant_fp8(
 
 @triton.jit
 def _per_token_group_quant_fp8_colmajor(
-        y_ptr,
-        y_q_ptr,
-        y_s_ptr,
-        group_size,
-        y_num_columns,
-        y_s_col_stride,
-        eps,
-        fp8_min,
-        fp8_max,
-        BLOCK: tl.constexpr,
+    y_ptr,
+    y_q_ptr,
+    y_s_ptr,
+    group_size,
+    y_num_columns,
+    y_s_col_stride,
+    eps,
+    fp8_min,
+    fp8_max,
+    BLOCK: tl.constexpr,
 ):
     """A Triton-accelerated function to perform per-token-group quantization on a tensor."""
     g_id = tl.program_id(0)
@@ -88,15 +89,17 @@ def _per_token_group_quant_fp8_colmajor(
 
 
 def fp8_per_token_group_quant(
-        x: torch.Tensor,
-        group_size: int,
-        eps: float = 1e-10,
-        dtype: torch.dtype = torch.float8_e4m3fn,
-        column_major_scales: bool = False,
-        scale_tma_aligned: bool = False,
+    x: torch.Tensor,
+    group_size: int,
+    eps: float = 1e-10,
+    dtype: torch.dtype = torch.float8_e4m3fn,
+    column_major_scales: bool = False,
+    scale_tma_aligned: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Function to perform per-token-group quantization on an input tensor `x`."""
-    assert x.shape[-1] % group_size == 0, "the last dimension of `x` cannot be divisible by `group_size`"
+    assert (
+        x.shape[-1] % group_size == 0
+    ), "the last dimension of `x` cannot be divisible by `group_size`"
     assert x.is_contiguous(), "`x` is not contiguous"
 
     finfo = torch.finfo(dtype)
@@ -163,6 +166,7 @@ def fp8_per_token_group_quant(
         )
 
     return x_q, x_s
+
 
 if __name__ == "__main__":
     x = torch.randn(1024, 1024).cuda()

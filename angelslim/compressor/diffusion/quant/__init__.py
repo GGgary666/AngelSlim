@@ -17,4 +17,3 @@ from .ptq import quantize_model_to_fp8
 __all__ = [
     "quantize_model_to_fp8",
 ]
-
