@@ -91,7 +91,7 @@ class DynamicDiTQuantizer:
 
     def _set_quantize_linear_module(self) -> torch.nn.Module:
         """
-        返回用于替换nn.Linear的量化模块类型
+        Returns the quantized module type to replace nn.Linear.
         """
         if "fp8" in self.quant_type:
             return FP8DynamicLinear
