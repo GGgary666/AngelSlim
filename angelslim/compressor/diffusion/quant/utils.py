@@ -23,10 +23,24 @@ __all__ = [
     "replace_module",
     "cleanup_memory",
     "should_quantize_layer",
-    "create_default_layer_filter",
     "_compile_pattern",
     "_ensure_deep_gemm",
+    "QuantType",
 ]
+
+
+class QuantType:
+    FP8_PER_TENSOR = "fp8-per-tensor"
+    FP8_PER_TOKEN = "fp8-per-token"
+    FP8_PER_BLOCK = "fp8-per-block"
+    VALID_TYPES = [FP8_PER_TENSOR, FP8_PER_TOKEN, FP8_PER_BLOCK]
+
+    @classmethod
+    def validate(cls, quant_type: str):
+        if quant_type not in cls.VALID_TYPES:
+            raise ValueError(
+                f"Invalid quant_type: {quant_type}. Valid types: {cls.VALID_TYPES}"
+            )
 
 
 def replace_module(model: torch.nn.Module, name: str, new_module: torch.nn.Module):
@@ -128,17 +142,6 @@ def should_quantize_layer(
     return False
 
 
-def create_default_layer_filter():
-    """
-    Create a default layer name filter for quantization.
-    Returns a preconfigured filter function.
-    """
-    include_patterns = ["wrapped_module", "block", "lin", "img", "txt"]
-    exclude_patterns = ["embed"]
-
-    return lambda name: should_quantize_layer(name, include_patterns, exclude_patterns)
-
-
 _deep_gemm_cached = None
 
 
@@ -162,82 +165,3 @@ def _ensure_deep_gemm():
                 "native_fp8_support, but was not found. Please install deep_gemm first."
             )
         ) from e
-
-
-if __name__ == "__main__":
-    """Test layer name filtering functionality: All English comments and outputs."""
-    print("=== Test: Layer Filtering Functionality ===\n")
-
-    # Test Case 1: Basic string match
-    print("1. Test case: Basic string matching:")
-    test_cases = [
-        ("transformer.block.0.attention.linear_q", True),
-        ("transformer.block.0.ffn.linear_1", True),
-        ("transformer.embedding.word_embed", False),
-        ("transformer.norm.final_norm", False),
-    ]
-
-    for layer_name, expected in test_cases:
-        result = should_quantize_layer(
-            layer_name,
-            include_patterns=["linear", "attention"],
-            exclude_patterns=["embed", "norm"],
-        )
-        status = "✓" if result == expected else "✗"
-        print(f"  {status} {layer_name}: {result} (Expected: {expected})")
-
-    print("\n2. Test: Regex pattern auto detection:")
-    # Test regex auto-detection
-    regex_cases = [
-        ("model.linear1.weight", True),  # matches .*\.linear\d+
-        ("model.linear2.weight", True),  # matches .*\.linear\d+
-        ("model.linear.weight", False),  # doesn't match \d+
-        ("model.attn.linear.weight", True),  # matches .*\.attn.*
-        ("model.attention.linear.weight", False),  # doesn't match .attn.
-        ("model.embed.word_embed.weight", False),  # excluded
-    ]
-
-    for layer_name, expected in regex_cases:
-        result = should_quantize_layer(
-            layer_name,
-            include_patterns=[r".*\.linear\d+", r".*\.attn.*"],
-            exclude_patterns=["embed"],
-        )
-        status = "✓" if result == expected else "✗"
-        print(f"  {status} {layer_name}: {result} (Expected: {expected})")
-
-    print("\n3. Test: Mixed string and regex patterns:")
-    mixed_cases = [
-        ("model.linear.weight", True),  # matches string "linear"
-        ("model.linear1.weight", True),  # matches regex ".*\.linear\d+"
-        ("model.attn.linear.weight", True),  # matches regex ".*\.attn.*"
-        ("model.norm.weight", False),  # excluded
-        ("model.embed.weight", False),  # excluded
-    ]
-
-    for layer_name, expected in mixed_cases:
-        result = should_quantize_layer(
-            layer_name,
-            include_patterns=["linear", r".*\.attn.*"],  # mixed
-            exclude_patterns=["norm", r".*embed.*"],
-        )
-        status = "✓" if result == expected else "✗"
-        print(f"  {status} {layer_name}: {result} (Expected: {expected})")
-
-    print("\n4. Test: Default filter:")
-    default_filter = create_default_layer_filter()
-    default_cases = [
-        ("model.wrapped_module.linear", True),
-        ("model.block.attention", True),
-        ("model.lin.projection", True),
-        ("model.img.encoder", True),
-        ("model.txt.decoder", True),
-        ("model.embedding.word_embed", False),
-    ]
-
-    for layer_name, expected in default_cases:
-        result = default_filter(layer_name)
-        status = "✓" if result == expected else "✗"
-        print(f"  {status} {layer_name}: {result} (Expected: {expected})")
-
-    print("\n=== All tests finished! ===")

@@ -90,7 +90,7 @@ def _per_token_group_quant_fp8_colmajor(
     tl.store(y_s_ptr, y_s)
 
 
-def fp8_per_token_group_quant(
+def fp8_per_token_group_quant_triton(
     x: torch.Tensor,
     group_size: int,
     eps: float = 1e-10,
@@ -168,12 +168,3 @@ def fp8_per_token_group_quant(
         )
 
     return x_q, x_s
-
-
-if __name__ == "__main__":
-    x = torch.randn(1024, 1024).cuda()
-    qx, scale = fp8_per_token_group_quant(x, group_size=128)
-    print(qx.shape)
-    print(scale.shape)
-    print(qx)
-    print(scale)

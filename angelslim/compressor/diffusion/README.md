@@ -1,24 +1,26 @@
-# AngelSlim Diffusion Model Compression Example
+# AngelSlim Diffusion Model Compression
 
-AngelSlim provides flexible and efficient tools for compressing DiT diffusion models. Our quantization utilities are highly modular, allowing seamless integration into various inference pipelines.
+AngelSlim offers flexible and efficient tools for compressing Diffusion Transformer (DiT) diffusion models. The quantization utilities are modular and easy to integrate into custom inference pipelines.
 
-## Quick Example: FP8 Quantization for Diffusion
+## Quick Start: FP8 Quantization for Diffusion Models
 
 ```python
 import torch
 from diffusers import FluxPipeline
-from angelslim.compressor.diffusion import quantize_model_to_fp8
+from angelslim.compressor.diffusion import DynamicDiTQuantizer
 
-# We recommend loading the model using torch.bfloat16 for best compatibility
+# Load DiT pipeline with bfloat16 to reduce memory usage
 pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16)
 
-# Choose quantization type: "fp8-per-tensor", "fp8-per-token", or "fp8-per-block"
-quantize_model_to_fp8(pipe.transformer, "fp8-per-token")
+# Supported quantization types: "fp8-per-tensor", "fp8-per-block", "fp8-per-token"
+# If you want to use "fp8-per-block" + DeepGEMM on NVIDIA Hopper (SM90+) devices,
+# please refer to https://github.com/deepseek-ai/DeepGEMM for installation instructions.
+quantizer = DynamicDiTQuantizer(quant_type="fp8-per-tensor")
+quantizer.quantize(pipe.transformer)
 
-# Move pipeline to GPU (optional)
 pipe.to("cuda")
 
-# Run inference as usual
+# Run pipeline with FP8-quantized transformer
 image = pipe(
     "A cat holding a sign that says hello world",
     guidance_scale=0.0,
@@ -26,40 +28,39 @@ image = pipe(
     max_sequence_length=256,
     generator=torch.Generator("cuda").manual_seed(0)
 ).images[0]
-image.save("flux-schnell_fp8_per_token.png")
+image.save("flux-schnell_fp8_per_tensor.png")
 ```
 
-## Flexible Quantization Layer Filtering
+## Customizable Quantization Layer Selection
 
-To ensure optimal accuracy, AngelSlim supports flexible filtering for quantized linear layers. You can customize which layers are quantized using filters or pattern matching.
+AngelSlim provides fine-grained control over which layers are quantized. You can specify inclusion and exclusion patterns as substrings or regular expressions.
 
 ```python
-# Method 1: Default filtering rules (quantizes typical linear layers)
-quantize_model_to_fp8(model, "fp8-per-tensor")
+from angelslim.compressor.diffusion import DynamicDiTQuantizer
 
-# Method 2: Specify include/exclude patterns as strings
-quantize_model_to_fp8(
-    model,
-    "fp8-per-tensor",
+# Option 1: Default filtering (quantizes common linear layers)
+quantizer = DynamicDiTQuantizer(quant_type="fp8-per-tensor")
+
+# Option 2: String-based include/exclude patterns
+quantizer = DynamicDiTQuantizer(
+    quant_type="fp8-per-tensor",
     include_patterns=["linear", "attention"],
     exclude_patterns=["embed", "norm"]
 )
 
-# Method 3: Use regular expression patterns (automatically recognized)
-quantize_model_to_fp8(
-    model,
-    "fp8-per-tensor",
+# Option 3: Regex pattern matching (auto-detected)
+quantizer = DynamicDiTQuantizer(
+    quant_type="fp8-per-tensor",
     include_patterns=[r".*\.linear\d+", r".*\.attn.*"],
     exclude_patterns=[r".*embed.*"]
 )
 
-# Method 4: Mix string and regex patterns for more fine-grained control
-quantize_model_to_fp8(
-    model,
-    "fp8-per-tensor",
+# Option 4: Mix of strings and regex for flexible rules
+quantizer = DynamicDiTQuantizer(
+    quant_type="fp8-per-tensor",
     include_patterns=["linear", r".*\.attn.*"],
     exclude_patterns=["embed", r".*norm.*"]
 )
 ```
 
-> **Tip:** You may also provide a custom Python function as a filter (see the detailed API docs for more options).
+For more details on customizing quantization behavior, see the API documentation.

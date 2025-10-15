@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .ptq import DynamicDiTQuantizer
+from .fp8_gemm import fp8_gemm_triton_block
 
-__all__ = [
-    "DynamicDiTQuantizer",
-]
+__all__ = ["fp8_gemm_triton_block"]

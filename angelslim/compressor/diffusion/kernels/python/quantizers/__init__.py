@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fp8_per_block import fp8_per_block_quant
-from .fp8_per_tensor import fp8_per_tensor_quant
-from .fp8_per_token_group import fp8_per_token_group_quant
+from .fp8_per_block import fp8_per_block_quant_triton
+from .fp8_per_token_group import fp8_per_token_group_quant_triton
 
-__all__ = ["fp8_per_tensor_quant", "fp8_per_token_group_quant", "fp8_per_block_quant"]
+__all__ = ["fp8_per_token_group_quant_triton", "fp8_per_block_quant_triton"]
