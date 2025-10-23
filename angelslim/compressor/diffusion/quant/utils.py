@@ -28,6 +28,8 @@ __all__ = [
     "_ensure_deep_gemm",
     "QuantType",
     "load_fp8_scales",
+    "save_quantized_model",
+    "load_quantized_model",
 ]
 
 
@@ -216,3 +218,116 @@ def load_fp8_scales(
         f"Invalid quant_scales type: {type(quant_scales)}. "
         "Only str (path) or dict is supported."
     )
+
+
+def save_quantized_model(model: torch.nn.Module, save_path: str, fp8_scales_map: Dict):
+    """
+    Save a quantized model and its scales.
+
+    Args:
+        model: The quantized model to save
+        save_path: Directory to save the model and scales
+        fp8_scales_map: Dictionary containing the FP8 scales
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not os.path.exists(save_path):
+        try:
+            os.makedirs(save_path, exist_ok=True)
+        except Exception as e:
+            raise RuntimeError(
+                f"Cannot create directory for save_path: {save_path}. Error: {e}"
+            )
+
+    try:
+        # Check if model supports save_pretrained (Hugging Face models)
+        if hasattr(model, "save_pretrained"):
+            model.save_pretrained(save_path)
+            logger.info(f"Saved quantized model to {save_path} using save_pretrained")
+        else:
+            # Fallback for regular torch.nn.Module using safetensors
+            from safetensors.torch import save_file as safe_save
+
+            model_path = os.path.join(save_path, "model.safetensors")
+            safe_save(model.state_dict(), model_path)
+            logger.info(f"Saved quantized model state_dict to {model_path}")
+
+        # Save scales map
+        from safetensors.torch import save_file as safe_save
+
+        scale_save_path = os.path.join(save_path, "fp8_scales.safetensors")
+        safe_save(fp8_scales_map, scale_save_path)
+        logger.info(f"Saved scales map to {scale_save_path}")
+
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to save model and scales map to {save_path}. Error: {e}"
+        )
+
+
+def load_quantized_model(model_class, save_path: str, device: str = "cpu"):
+    """
+    Load a quantized model from save_path.
+
+    Args:
+        model_class: The model class to instantiate
+        save_path: Path to the saved model directory
+        device: Device to load the model on
+
+    Returns:
+        Loaded model with quantized weights
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        # Try to load as Hugging Face model first
+        if hasattr(model_class, "from_pretrained"):
+            model = model_class.from_pretrained(save_path)
+            logger.info(f"Loaded Hugging Face model from {save_path}")
+            return model
+    except Exception as e:
+        logger.warning(f"Failed to load as Hugging Face model: {e}")
+
+    # Fallback: load as regular PyTorch model
+    try:
+        # Try safetensors format first
+        model_path = os.path.join(save_path, "model.safetensors")
+        if os.path.exists(model_path):
+            from safetensors.torch import load_file as safe_load
+
+            # Load model state dict from safetensors
+            state_dict = safe_load(model_path, device=device)
+
+            # Create model instance
+            model = model_class()
+            model.load_state_dict(state_dict)
+            model.to(device)
+
+            logger.info(f"Loaded PyTorch model from {model_path} (safetensors)")
+            return model
+
+        # Fallback to pytorch_model.bin if safetensors not found
+        model_path = os.path.join(save_path, "pytorch_model.bin")
+        if os.path.exists(model_path):
+            # Load model state dict
+            state_dict = torch.load(model_path, map_location=device)
+
+            # Create model instance
+            model = model_class()
+            model.load_state_dict(state_dict)
+            model.to(device)
+
+            logger.info(f"Loaded PyTorch model from {model_path} (pytorch)")
+            return model
+        else:
+            raise FileNotFoundError(
+                f"Model file not found at {save_path}. \
+                Expected 'model.safetensors' or 'pytorch_model.bin'"
+            )
+
+    except Exception as e:
+        raise RuntimeError(f"Failed to load model from {save_path}. Error: {e}")

@@ -14,7 +14,6 @@
 
 import copy
 import logging
-import os
 import re
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -32,7 +31,9 @@ from .utils import (
     _ensure_deep_gemm,
     cleanup_memory,
     load_fp8_scales,
+    load_quantized_model,
     replace_module,
+    save_quantized_model,
     should_quantize_layer,
 )
 
@@ -172,36 +173,19 @@ class DynamicDiTQuantizer:
             self.quant_type == QuantType.FP8_PER_TENSOR
         ), "Currently only FP8_PER_TENSOR is supported for export"
         self.convert_linear(model)
-        if not os.path.exists(save_path):
-            try:
-                os.makedirs(save_path, exist_ok=True)
-            except Exception as e:
-                raise RuntimeError(
-                    f"Cannot create directory for save_path: {save_path}. Error: {e}"
-                )
-        try:
-            # Check if model supports save_pretrained (Hugging Face models)
-            if hasattr(model, "save_pretrained"):
-                model.save_pretrained(save_path)
-                logger.info(
-                    f"Saved quantized model to {save_path} using save_pretrained"
-                )
-            else:
-                # Fallback for regular torch.nn.Module using safetensors
-                from safetensors.torch import save_file as safe_save
+        save_quantized_model(model, save_path, self.fp8_scales_map)
 
-                model_path = os.path.join(save_path, "model.safetensors")
-                safe_save(model.state_dict(), model_path)
-                logger.info(f"Saved quantized model state_dict to {model_path}")
+    @staticmethod
+    def load_quantized_model(model_class, save_path: str, device: str = "cpu"):
+        """
+        Load a quantized model from save_path.
 
-            # Save scales map
-            from safetensors.torch import save_file as safe_save
+        Args:
+            model_class: The model class to instantiate
+            save_path: Path to the saved model directory
+            device: Device to load the model on
 
-            scale_save_path = os.path.join(save_path, "fp8_scales.safetensors")
-            safe_save(self.fp8_scales_map, scale_save_path)
-            logger.info(f"Saved scales map to {scale_save_path}")
-
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to save model and scales map to {save_path}. Error: {e}"
-            )
+        Returns:
+            Loaded model with quantized weights
+        """
+        return load_quantized_model(model_class, save_path, device)
