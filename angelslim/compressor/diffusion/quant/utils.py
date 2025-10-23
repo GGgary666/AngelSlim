@@ -14,8 +14,9 @@
 
 
 import gc
+import os
 import re
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import torch
 
@@ -26,6 +27,7 @@ __all__ = [
     "_compile_pattern",
     "_ensure_deep_gemm",
     "QuantType",
+    "load_fp8_scales",
 ]
 
 
@@ -165,3 +167,52 @@ def _ensure_deep_gemm():
                 "native_fp8_support, but was not found. Please install deep_gemm first."
             )
         ) from e
+
+
+def load_fp8_scales(
+    quant_scales: Optional[Union[str, Dict[str, torch.Tensor]]]
+) -> Dict[str, torch.Tensor]:
+    """
+    Load FP8 quantization scales from a dict, file, or directory.
+    Prefer loading .safetensors if available, then .pth.
+    """
+
+    if quant_scales is None:
+        raise ValueError("quant_scales is required")
+
+    if isinstance(quant_scales, dict) and len(quant_scales) > 0:
+        # 直接使用已传入的 dict
+        return quant_scales
+
+    if isinstance(quant_scales, str):
+        # 路径是文件
+        if os.path.isfile(quant_scales):
+            if quant_scales.endswith(".safetensors"):
+                import safetensors.torch
+
+                print(f"Loaded scale map from {quant_scales}")
+                return safetensors.torch.load_file(quant_scales)
+            else:
+                print(f"Loaded scale map from {quant_scales}")
+                return torch.load(quant_scales)
+        # 路径是目录，优先找 safetensors，再找 .pth
+        if os.path.isdir(quant_scales):
+            safetensors_path = os.path.join(quant_scales, "fp8_scales.safetensors")
+            pth_path = os.path.join(quant_scales, "fp8_scales.pth")
+            if os.path.isfile(safetensors_path):
+                import safetensors.torch
+
+                print(f"Loaded scale map from {safetensors_path}")
+                return safetensors.torch.load_file(safetensors_path)
+            if os.path.isfile(pth_path):
+                print(f"Loaded scale map from {pth_path}")
+                return torch.load(pth_path)
+            raise FileNotFoundError(
+                f"Quant scale file not found: {pth_path} or {safetensors_path}"
+            )
+        raise FileNotFoundError(f"quant_scales path does not exist: {quant_scales}")
+
+    raise ValueError(
+        f"Invalid quant_scales type: {type(quant_scales)}. "
+        "Only str (path) or dict is supported."
+    )
