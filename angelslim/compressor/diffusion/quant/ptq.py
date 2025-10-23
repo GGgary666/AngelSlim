@@ -180,13 +180,27 @@ class DynamicDiTQuantizer:
                     f"Cannot create directory for save_path: {save_path}. Error: {e}"
                 )
         try:
-            model.save_pretrained(save_path)
-            logger.info(f"Saved quantized model to {save_path}")
+            # Check if model supports save_pretrained (Hugging Face models)
+            if hasattr(model, "save_pretrained"):
+                model.save_pretrained(save_path)
+                logger.info(
+                    f"Saved quantized model to {save_path} using save_pretrained"
+                )
+            else:
+                # Fallback for regular torch.nn.Module using safetensors
+                from safetensors.torch import save_file as safe_save
+
+                model_path = os.path.join(save_path, "model.safetensors")
+                safe_save(model.state_dict(), model_path)
+                logger.info(f"Saved quantized model state_dict to {model_path}")
+
+            # Save scales map
             from safetensors.torch import save_file as safe_save
 
             scale_save_path = os.path.join(save_path, "fp8_scales.safetensors")
             safe_save(self.fp8_scales_map, scale_save_path)
             logger.info(f"Saved scales map to {scale_save_path}")
+
         except Exception as e:
             raise RuntimeError(
                 f"Failed to save model and scales map to {save_path}. Error: {e}"
