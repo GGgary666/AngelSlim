@@ -12,5 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .utils import *
-from .quant_io import *
+from .quant_io import load_fp8_scales, load_quantized_model, save_quantized_model
+from .utils import (
+    QuantType,
+    _compile_pattern,
+    _ensure_deep_gemm,
+    cleanup_memory,
+    replace_module,
+    should_quantize_layer,
+)
+
+__all__ = [
+    "load_fp8_scales",
+    "load_quantized_model",
+    "save_quantized_model",
+    "QuantType",
+    "_compile_pattern",
+    "_ensure_deep_gemm",
+    "cleanup_memory",
+    "replace_module",
+    "should_quantize_layer",
+]

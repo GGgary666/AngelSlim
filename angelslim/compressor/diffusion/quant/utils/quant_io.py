@@ -17,10 +17,12 @@ from typing import Dict, Optional, Union
 
 import torch
 
-__all__ = [ "load_fp8_scales", "load_quantized_model","save_quantized_model"]
+__all__ = ["load_fp8_scales", "load_quantized_model", "save_quantized_model"]
 
 
-def load_fp8_scales(quant_scales: Optional[Union[str, Dict[str, torch.Tensor]]]) -> Dict[str, torch.Tensor]:
+def load_fp8_scales(
+    quant_scales: Optional[Union[str, Dict[str, torch.Tensor]]]
+) -> Dict[str, torch.Tensor]:
     """Load FP8 quant scales from dict, file, or dir. Prefer .safetensors."""
     if quant_scales is None:
         raise ValueError("quant_scales is required")
@@ -34,6 +36,7 @@ def load_fp8_scales(quant_scales: Optional[Union[str, Dict[str, torch.Tensor]]])
         if os.path.isfile(quant_scales):
             if quant_scales.endswith(".safetensors"):
                 import safetensors.torch
+
                 print(f"Loaded scale map from {quant_scales}")
                 return safetensors.torch.load_file(quant_scales)
             else:
@@ -45,6 +48,7 @@ def load_fp8_scales(quant_scales: Optional[Union[str, Dict[str, torch.Tensor]]])
             pth_path = os.path.join(quant_scales, "fp8_scales.pth")
             if os.path.isfile(safetensors_path):
                 import safetensors.torch
+
                 print(f"Loaded scale map from {safetensors_path}")
                 return safetensors.torch.load_file(safetensors_path)
             if os.path.isfile(pth_path):
@@ -84,6 +88,7 @@ def save_quantized_model(model: torch.nn.Module, save_path: str, fp8_scales_map:
         else:
             # Otherwise, save state_dict with safetensors
             from safetensors.torch import save_file as safe_save
+
             model_path = os.path.join(save_path, "model.safetensors")
             safe_save(model.state_dict(), model_path)
             logger.info(f"Saved state_dict to {model_path}")
@@ -123,6 +128,7 @@ def load_quantized_model(model_class, save_path: str, device: str = "cpu"):
         model_path = os.path.join(save_path, "model.safetensors")
         if os.path.exists(model_path):
             from safetensors.torch import load_file as safe_load
+
             state_dict = safe_load(model_path, device=device)
             model = model_class()
             model.load_state_dict(state_dict)
