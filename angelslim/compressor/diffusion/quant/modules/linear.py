@@ -16,10 +16,10 @@ import torch
 
 from ..quant_func import (
     fp8_gemm,
-    fp8_weight_only_gemm,
     fp8_per_block_quant,
     fp8_per_tensor_quant,
     fp8_per_token_group_quant,
+    fp8_weight_only_gemm,
 )
 
 
@@ -92,24 +92,25 @@ class FP8DynamicLinear(torch.nn.Module):
 class FP8WeightOnlyLinear(torch.nn.Module):
     """
     FP8 Weight-Only Quantized Linear Layer.
-    
-    This layer quantizes only the weights to FP8 while keeping activations 
-    in higher precision (bfloat16/float16). This provides a good balance 
+
+    This layer quantizes only the weights to FP8 while keeping activations
+    in higher precision (bfloat16/float16). This provides a good balance
     between memory savings and accuracy.
     """
+
     def __init__(
         self,
         weight: torch.Tensor,
         weight_scale: torch.Tensor,
         bias: torch.nn.Parameter,
-        native_fp8_support: bool = False,  # 保留接口但不使用
+        native_fp8_support: bool = False,  # not used
         quant_type: str = "fp8-per-tensor-weight-only",
     ):
         super().__init__()
         self.weight = torch.nn.Parameter(weight, requires_grad=False)
         self.weight_scale = torch.nn.Parameter(weight_scale, requires_grad=False)
         self.bias = bias
-        self.native_fp8_support = native_fp8_support  # 保留但不使用
+        self.native_fp8_support = native_fp8_support  # not used
         self.quant_type = quant_type
 
     @torch.compiler.disable(recursive=True)

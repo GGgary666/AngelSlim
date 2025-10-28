@@ -111,7 +111,6 @@ class DynamicDiTQuantizer:
                 _ensure_deep_gemm()
             quant_weight, weight_scale = fp8_per_block_quant(linear.weight)
         elif self.quant_type == QuantType.FP8_PER_TENSOR_WEIGHT_ONLY:
-            # For weight-only quantization, we can use per-tensor quantization for weights
             quant_weight, weight_scale = fp8_per_tensor_quant(linear.weight)
         else:
             raise ValueError(f"Invalid quant_type: {self.quant_type}")

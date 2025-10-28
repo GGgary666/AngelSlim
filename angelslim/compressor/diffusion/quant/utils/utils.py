@@ -34,7 +34,12 @@ class QuantType:
     FP8_PER_TOKEN = "fp8-per-token"
     FP8_PER_BLOCK = "fp8-per-block"
     FP8_PER_TENSOR_WEIGHT_ONLY = "fp8-per-tensor-weight-only"
-    VALID_TYPES = [FP8_PER_TENSOR, FP8_PER_TOKEN, FP8_PER_BLOCK, FP8_PER_TENSOR_WEIGHT_ONLY]
+    VALID_TYPES = [
+        FP8_PER_TENSOR,
+        FP8_PER_TOKEN,
+        FP8_PER_BLOCK,
+        FP8_PER_TENSOR_WEIGHT_ONLY,
+    ]
 
     @classmethod
     def validate(cls, quant_type: str):
