@@ -2,7 +2,7 @@
 # Tip: Copy the following commands to your terminal; modify paths/parameters as needed.
 
 # Quantize the model online and run inference
-quant-type options: fp8-per-tensor, fp8-per-block, fp8-per-token, fp8-per-tensor-weight-only
+# quant-type options: fp8-per-tensor, fp8-per-block, fp8-per-token, fp8-per-tensor-weight-only
 python scripts/diffusion/run_diffusion.py \
   --model-name-or-path /path_or_name/to/model \
   --quant-type fp8-per-tensor \
