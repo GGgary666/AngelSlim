@@ -154,7 +154,7 @@ If you need to load a quantized model via `transformers`, please set the `deploy
 To test offline inference with a quantized model loaded via `transformers`, run the following command:
 
 ```shell
-python deploy/offline.py $MODEL_PATH
+python scripts/deploy/offline.py $MODEL_PATH
 ```
 
 Where `MODEL_PATH` is the path to the quantized model output.
@@ -169,7 +169,7 @@ Use the following script to launch a [vLLM](https://github.com/vllm-project/vllm
 
 
 ```shell
-bash deploy/run_vllm.sh $MODEL_PATH
+bash scripts/deploy/run_vllm.sh $MODEL_PATH
 ```
 
 **SGLang**
@@ -178,7 +178,7 @@ bash deploy/run_vllm.sh $MODEL_PATH
 Use the following script to launch a [SGLang](https://github.com/sgl-project/sglang) server, recommended version `sglang>=0.4.6.post1`.
 
 ```shell
-bash deploy/run_sglang.sh $MODEL_PATH
+bash scripts/deploy/run_sglang.sh $MODEL_PATH
 ```
 
 #### 3. Service Invocation
@@ -186,7 +186,7 @@ bash deploy/run_sglang.sh $MODEL_PATH
 Invoke requests via [OpenAI's API format](https://platform.openai.com/docs/api-reference/introduction):
 
 ```shell
-bash deploy/openai.sh $MODEL_PATH
+bash scripts/deploy/openai.sh $MODEL_PATH
 ```
 
 #### 4. Performance Evaluation
@@ -194,7 +194,7 @@ bash deploy/openai.sh $MODEL_PATH
 Evaluate the performance of quantized model using [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness), recommended version`lm-eval>=0.4.8`:
 
 ```shell
-bash deploy/lm_eval.sh $MODEL_PATH
+bash scripts/deploy/lm_eval.sh $MODEL_PATH
 ```
 
 For more detaileds, please refer to the [Deployment Documentation](https://angelslim.readthedocs.io/zh-cn/latest/deployment/deploy.html).

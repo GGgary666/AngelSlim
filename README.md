@@ -154,7 +154,7 @@ python3 tools/spec_benchmark.py \
 测试`transformers`加载量化模型离线推理：
 
 ```shell
-python deploy/offline.py $MODEL_PATH
+python scripts/deploy/offline.py $MODEL_PATH
 ```
 
 其中 `MODEL_PATH` 为量化产出模型路径。
@@ -168,7 +168,7 @@ python deploy/offline.py $MODEL_PATH
 [vLLM](https://github.com/vllm-project/vllm) 服务启动脚本，建议版本`vllm>=0.8.5.post1`，部署MOE INT8量化模型需要`vllm>=0.9.2`。
 
 ```shell
-bash deploy/run_vllm.sh $MODEL_PATH
+bash scripts/deploy/run_vllm.sh $MODEL_PATH
 ```
 
 **SGLang**
@@ -176,7 +176,7 @@ bash deploy/run_vllm.sh $MODEL_PATH
 [SGLang](https://github.com/sgl-project/sglang) 服务启动脚本，建议版本 `sglang>=0.4.6.post1`：
 
 ```shell
-bash deploy/run_sglang.sh $MODEL_PATH
+bash scripts/deploy/run_sglang.sh $MODEL_PATH
 ```
 
 #### 3. 服务调用
@@ -184,7 +184,7 @@ bash deploy/run_sglang.sh $MODEL_PATH
 通过 [OpenAI 格式](https://platform.openai.com/docs/api-reference/introduction) 接口发起请求：
 
 ```shell
-bash deploy/openai.sh $MODEL_PATH
+bash scripts/deploy/openai.sh $MODEL_PATH
 ```
 
 #### 4. 效果验证
@@ -192,7 +192,7 @@ bash deploy/openai.sh $MODEL_PATH
 使用 [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) 评估量化模型精度，建议版本`lm-eval>=0.4.8`：
 
 ```shell
-bash deploy/lm_eval.sh $MODEL_PATH
+bash scripts/deploy/lm_eval.sh $MODEL_PATH
 ```
 
 详细操作指南请参阅[部署文档](https://angelslim.readthedocs.io/zh-cn/latest/deployment/deploy.html)。
